@@ -1,0 +1,74 @@
+---
+title: "Practical Machine Learning Project"
+output: html_document
+---
+#Loading data and packages
+```{r}
+library(randomForest)
+library(caret)
+library(ggplot2)
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))
+testing <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+```
+
+#Cleaning data
+There are in total 160 columns in the dataset. Columns that have near zero variance, large amount of NAs and meta data are removed so that they don't make any hinderance in training a model.
+```{r}
+#removing columns with near zero variance
+nzv<-nearZeroVar(training,saveMetrics=TRUE)
+training<-training[,!nzv$nzv]
+
+#removing columns with more than 80% NAs
+nav <- sapply(colnames(training), function(x) if(sum(is.na(training[, x])) > 0.8*nrow(training)){return(T)}else{return(F)})
+training <- training[, !nav]
+
+# removing metadata columns
+training<-training[,-c(1:7)]
+
+# calculate correlations
+cor <- abs(sapply(colnames(training[, -ncol(training)]), function(x) cor(as.numeric(training[, x]), as.numeric(training$classe), method = "spearman")))
+```
+
+#Dividing the data into training and cross validation sets
+```{r, echo=FALSE}
+inTrain = createDataPartition(y=training$classe, p=0.7, list=FALSE)
+training_1 = training[inTrain,]
+testing_1 = training[-inTrain,]
+dim(training_1)
+dim(testing_1)
+
+```
+70% of the data will be used to train the model and 30% will be used to check the accuracy of the trained model.
+
+#Training the model
+```{r}
+modFit <- randomForest(classe ~ ., data=training_1)
+prediction <- predict(modFit, testing_1, type = "class")
+cmrf <- confusionMatrix(prediction, testing_1$classe)
+cmrf
+```
+RandomForest function has been used to train the model. Predictions are made on the cross-validation set and confusion matrix is generated to check the accuracy of model prediction.
+
+#Plotting Model
+```{r}
+plot(modFit)
+```
+
+#Results for testing data and expected error
+Random Forests gave an Accuracy in the Testing_1(cross-validation) dataset of 99.56%. The expected out-of-sample error is 100-99.56 = 0.44%.
+
+#Creating files for submission
+```{r}
+answers <- as.character(predict(modFit, testing))
+write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+write_files(answers)
+```
