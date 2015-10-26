@@ -28,9 +28,6 @@ training <- training[, !nav]
 # removing metadata columns
 training<-training[,-c(1:7)]
 
-# calculate correlations
-cor <- abs(sapply(colnames(training[, -ncol(training)]), function(x) cor(as.numeric(training[, x]), as.numeric(training$classe), method = "spearman")))
-cor
 ```
 
 #Dividing the data into training and cross validation sets
@@ -59,7 +56,12 @@ plot(modFit)
 ```
 
 #Results for testing data and expected error
-Random Forests gave an Accuracy in the Testing_1(cross-validation) dataset of 99.56%. The expected out-of-sample error is 100-99.56 = 0.44%.
+```{r}
+#Accuracy
+cmrf$overall
+#expected out-of-sample error
+as.numeric((1-cmrf$overall[1])*100)
+```
 
 #Creating files for submission
 ```{r}
